@@ -1,14 +1,10 @@
-; versão de 18/10/2022
-; Uso de diretivas extern e global 
-; Professor Camilo Diaz
+;Elder , Guilherme Dayrell Cruz Soares e Pedro Antônio Rosa de Souza
 
 extern line, full_circle, circle, cursor, caracter, plot_xy, 
 global cor
 global BALL_X,BALL_y
 
 segment code
-
-
 
 ;org 100h
 ..start:
@@ -18,10 +14,11 @@ segment code
     	MOV 	SS,AX
     	MOV 	SP,stacktop
 
-        MOV     AX,[ballSpeed_X]
+		MOV     AX,[ballSpeed_X]
         MOV     [ballCompDirecao],AX
         MOV     [ballCompDirecaoNeg],AX
         NEG     word [ballCompDirecaoNeg]
+
 
 ;Salvar modo corrente de video(vendo como esta o modo de video da maquina)
         MOV  	AH,0Fh
@@ -33,6 +30,31 @@ segment code
    		MOV     AH,0
     	INT     10h
 		
+; Escrever o Menu
+        CALL    exibir_menu
+
+; Loop de interação
+        CALL    selecionar_opcao
+
+
+;GAmbiarra para apagar menu
+        MOV		byte [cor],preto		; bloco preto
+        MOV		CX,150	
+
+		Apaga_menu:
+        MOV		AX,200
+        ADD		AX,CX            			;x1
+        PUSH	AX
+        MOV		AX,390             			;y1
+        PUSH	AX
+        MOV		AX,200
+        ADD		AX,CX        				;x2
+        PUSH	AX
+        MOV		AX,250               		;y2
+        PUSH	AX
+        CALL	line
+        LOOP	Apaga_menu
+
 
 ;desenha limites
 		MOV		byte [cor],branco_intenso	;linha inferior
@@ -257,145 +279,72 @@ segment code
         CALL	line
         LOOP	bloco_azul_direita_loop
 
+; Desenhar raquete direita
+MOV byte [cor], azul   ; Define a cor azul para a raquete direita
+MOV CX, 0             ; Iniciar contador de altura (varredura vertical)
+
+raquete_direita_loop:
+    MOV DX, 0         ; Iniciar contador de largura
+
+    raquete_direita_largura_loop:
+        MOV AX, [raquete_direita]      ; x1
+        ADD AX, DX                      ; Ajusta x1 horizontalmente
+        PUSH AX
+        MOV AX, [raquete_direita+2]    ; y1
+        ADD AX, CX                      ; Ajusta y1 verticalmente
+        PUSH AX
+        MOV AX, [raquete_direita]      ; x2
+        ADD AX, DX                      ; Ajusta x2 (mesmo x1 pois é pixel único)
+        PUSH AX
+        MOV AX, [raquete_direita+2]    ; y2
+        ADD AX, CX                      ; Ajusta y2 (mesmo y1 pois é pixel único)
+        PUSH AX
+        CALL line
+
+        INC DX                          ; Incrementa contador de largura
+        CMP DX, 20                        ; Largura da raquete
+        JL raquete_direita_largura_loop
+
+    INC CX                              ; Incrementa contador de altura
+    CMP CX, 84                          ; Altura da raquete
+    JL raquete_direita_loop
+
+; Desenhar raquete esquerda
+MOV byte [cor], magenta  ; Define a cor magenta para a raquete esquerda
+MOV CX, 0                ; Reiniciar contador de altura
+
+raquete_esquerda_loop:
+    MOV DX, 0         ; Iniciar contador de largura
+
+    raquete_esquerda_largura_loop:
+        MOV AX, [raquete_esquerda]      ; x1
+        ADD AX, DX                      ; Ajusta x1 horizontalmente
+        PUSH AX
+        MOV AX, [raquete_esquerda+2]    ; y1
+        ADD AX, CX                      ; Ajusta y1 verticalmente
+        PUSH AX
+        MOV AX, [raquete_esquerda]      ; x2
+        ADD AX, DX                      ; Ajusta x2 (mesmo x1 pois é pixel único)
+        PUSH AX
+        MOV AX, [raquete_esquerda+2]    ; y2
+        ADD AX, CX                      ; Ajusta y2 (mesmo y1 pois é pixel único)
+        PUSH AX
+        CALL line
+
+        INC DX                          ; Incrementa contador de largura
+        CMP DX, 20                       ; Largura da raquete
+        JL raquete_esquerda_largura_loop
+
+    INC CX                              ; Incrementa contador de altura
+    CMP CX, 84                          ; Altura da raquete
+    JL raquete_esquerda_loop
+
 	
 
     
-    DRAW_BALL:
+    main_loop:
 
-    ;=========================== Lendo As Teclas =================================
-    
-    MOV AH, 01H     ; Verifica se há tecla no buffer do teclado
-    INT 16H       
-    JZ  NAO_TEM     ; Se ZF estiver definido, nenhuma tecla foi pressionada
-    MOV AH, 00H     ; Se houver tecla, lê a tecla pressionada
-    INT 16H       
-
-    ;=========================== Verificando As Teclas ===========================
-    
-    ; Verifica tecla W (Mover para cima)
-    cmp ah, 11h
-    jne W_Verificado
-        MOV AX,2
-        ADD [raqueteEsq_y1],AX
-        jnp Remove_Raquete_Esq
-    W_Verificado: 
-
-    ; Verifica tecla S (Mover para baixo)
-    cmp ah, 1Fh  
-    jne S_Verificado
-        MOV AX,2
-        SUB [raqueteEsq_y1],AX
-        MOV AX,84
-        ADD [raqueteEsq_y_old],AX
-        jnp Remove_Raquete_Esq
-    S_Verificado:   
-
-    ; Verifica tecla Seta Cima
-    cmp ah, 48h  
-    jne SetaSubir_Verificado
-        MOV AX,2
-        ADD [raqueteDir_y1],AX
-        jnp Remove_Raquete_Dir
-    SetaSubir_Verificado:   
-
-    ; Verifica tecla Seta Baixo
-    cmp ah, 50h  
-    jne SetaDescer_Verificado
-        MOV AX,2
-        SUB [raqueteDir_y1],AX
-        MOV AX,84
-        ADD [raqueteDir_y_old],AX
-        jnp Remove_Raquete_Dir
-    SetaDescer_Verificado:
-
-    NAO_TEM:        ; Continua a execução normal do programa
-
-    ;=========================== Apagando a Raquete =================================
-
-    Remove_Raquete_Dir:
-    MOV		byte [cor],preto	        ; bloco magenta claro
-	MOV		CX,2						; repetir 2 vezes
-
-    apagando_raquete_direita_loop:
-        MOV		AX,[raqueteDir_x1]                   	;x1
-        PUSH	AX
-        MOV     BX,[raqueteDir_y_old]
-        PUSH	BX
-        MOV		AX,[raqueteDir_x2]                  	;x2
-        PUSH	AX
-        MOV     BX,[raqueteDir_y_old]                 	;y
-        PUSH	BX
-        CALL	line
-        MOV     AX,1
-        ADD     [raqueteDir_y_old],AX
-        LOOP	apagando_raquete_direita_loop
-
-    Remove_Raquete_Esq:
-    MOV		byte [cor],preto	        ; bloco azul
-    MOV		CX,2						; repetir 84 vezes
-    apagando_raquete_esquerda_loop:
-        MOV		AX,[raqueteEsq_x1]                  	;x1
-        PUSH	AX
-        MOV     BX,[raqueteEsq_y_old]
-        PUSH    BX
-        MOV		AX,[raqueteEsq_x2]                  	;x2
-        PUSH	AX
-        MOV     BX,[raqueteEsq_y_old]
-        PUSH	BX
-        CALL	line
-        MOV     AX,1
-        ADD     [raqueteEsq_y_old],AX
-        LOOP	apagando_raquete_esquerda_loop
-
-
-    ;=========================== Plotando as raquetes =================================
-
-
-    MOV		byte [cor],magenta	        ; bloco magenta claro
-	MOV		CX,84						; repetir 2 vezes
-
-    raquete_direita_loop:
-        MOV		AX,[raqueteDir_x1]                   	
-        PUSH	AX
-        MOV		AX,[raqueteDir_y1]
-        ADD		AX,CX                 		
-        PUSH	AX
-        MOV		AX,[raqueteDir_x2]                  	
-        PUSH	AX
-        MOV		AX,[raqueteDir_y1]
-        ADD		AX,CX                 		
-        PUSH	AX
-        CALL	line
-        LOOP	raquete_direita_loop
-
-    MOV		byte [cor],azul	            ; bloco azul
-    MOV		CX,85						; repetir 84 vezes
-
-    raquete_esquerda_loop:
-        MOV		AX,[raqueteEsq_x1]                  	;x1
-        PUSH	AX
-        MOV		AX,[raqueteEsq_y1]
-        ADD		AX,CX                 		;y1
-        PUSH	AX
-        MOV		AX,[raqueteEsq_x2]                  		;x2
-        PUSH	AX
-        MOV		AX,[raqueteEsq_y1]
-        ADD		AX,CX                 		;y2
-        PUSH	AX
-        CALL	line
-        LOOP	raquete_esquerda_loop
-
-    
-
-
-    ;=========================== Setando coordenada da raquete para apagar =================================
-    MOV AX,[raqueteDir_y1]
-    MOv [raqueteDir_y_old],AX
-    MOV AX,[raqueteEsq_y1]
-    MOV [raqueteEsq_y_old],AX
-
-
-    ;=========================== bolinha =================================
+	;=========================== bolinha =================================
 
 
         ;Apagando Rastro da Bola = plotando uma bola preta
@@ -408,6 +357,8 @@ segment code
 		PUSH	AX
 		CALL	circle
 
+        ;CALL DRAW_BALL_FUNCTION
+        ;CALL ball
         ;Plotando a Bola
         MOV		byte [cor],verde	;Cor
 		MOV		AX,[BALL_X]         ;Coordenada X
@@ -449,14 +400,16 @@ segment code
         ;=================Colisão em Y - Bordas do campo =================
 
         ;if(BALL_Y < 0)   ballSpeed_Y = (ballSpeed_Y)*(-1)
-        MOV AX,21
+        MOV AX,10
+        ADD AX,[ball_Radius]
         CMP AX,[BALL_Y]
         JL DentroDoCampoBaixo
             NEG word [ballSpeed_Y]
         DentroDoCampoBaixo:
           
         ;if(BALL_Y > 480) ballSpeed_Y = (ballSpeed_Y)*(-1)
-        MOV AX,459
+        MOV AX,470
+        SUB AX,[ball_Radius]
         CMP [BALL_Y],AX
         JL DentroDoCampoAlto
             NEG word [ballSpeed_Y]
@@ -465,46 +418,47 @@ segment code
         MOV AX,[ballSpeed_Y]
         ADD [BALL_Y],AX
 
-    ;================= Colisão na raquete Direita ====================
 
-    MOv AX,[raqueteDir_x1]                          ;x1 da raquete
-    SUB AX,15                                       ;Raio da bolinha
+		 ;================= Colisão na raquete Direita ====================
+
+    MOv AX,[raquete_direita]                          ;x1 da raquete
+    SUB AX,25                                       ;Raio da bolinha
     CMP [BALL_X],AX                                 ;Compara se Ball_x < raquete_x
     JL  PularComparacaoRaqueteDir                   ;Se Ball_x < raquete_x => sem colisão   
         MOV AX,[ballSpeed_X]
         CMP [ballCompDirecaoNeg],AX                 ;não colide se a bolinha estiver indo para esquerda
         JE  PularComparacaoRaqueteDir
-            MOV AX,[raqueteDir_y1]
+            MOV AX,[raquete_direita+2]
             CMP AX,[BALL_Y]                             ;Verifica se a bola está aabixo da parte de baixo da raquete
             JG PularComparacaoRaqueteDir                  ;Se a bola estiver abaixo => Pula colisão      
-                MOV AX,[raqueteDir_y1]
+                MOV AX,[raquete_direita+2]
                 ADD word AX,84
                 CMP AX,[BALL_Y]                         ;Verifica se a bola está mais alto que a parte alta da raquete   
                 JL PularComparacaoRaqueteDir              ;Se a bola estiver mais alto => Pula colisão
                     NEG word [ballSpeed_X]        
     PularComparacaoRaqueteDir:
+
     ;================= Colisão na raquete Esquerda ====================
 
-    MOv AX,[raqueteEsq_x2]                          ;x1 da raquete
-    ADD AX,15                                       ;Raio da bolinha
+    MOv AX,[raquete_esquerda+4]                          ;x1 da raquete
+    ADD AX,25                                       ;Raio da bolinha
     CMP [BALL_X],AX                                 ;Compara se Ball_x < raquete_x
     JG  PularComparacaoRaqueteEsq                   ;Se Ball_x < raquete_x => sem colisão
         MOV AX,[ballSpeed_X]                        ;Não colide se a bolinha estiver indo para esquerda
         CMP [ballCompDirecao],AX
         JE  PularComparacaoRaqueteEsq
-            MOV AX,[raqueteEsq_y1]
+            MOV AX,[raquete_esquerda+2]
             CMP AX,[BALL_Y]                             ;Verifica se a bola está aabixo da parte de baixo da raquete
             JG PularComparacaoRaqueteEsq                  ;Se a bola estiver abaixo => Pula colisão
-                MOV AX,[raqueteEsq_y1]
+                MOV AX,[raquete_esquerda+2]
                 ADD word AX,84
                 CMP AX,[BALL_Y]                         ;Verifica se a bola está mais alto que a parte alta da raquete
                 JL PularComparacaoRaqueteEsq              ;Se a bola estiver mais alto => Pula colisão                    
                     NEG word [ballSpeed_X]
     PularComparacaoRaqueteEsq:
-    
 
 
-    ;================= Colisão  - Blocos lado direito =================
+     ;================= Colisão  - Blocos lado direito =================
       
         MOV AX,603                                  ;Verificando if(coordenada_x < 603) Pula o check_Colisao_Direita
         CMP [BALL_X],AX
@@ -824,10 +778,6 @@ segment code
         PularComparacaoEsq_Y:
 
 
-
-
-
-
         ;Adicionando Delay para o movimento
 		MOV AH, 2Ch                 ;Função 2Ch do DOS: Get System Time
 		INT 21h                     ;CH = horas, CL = minutos, DH = segundos, DL = centésimos
@@ -843,7 +793,189 @@ segment code
 		
 		MOV [TIME_AUX],DL           ;Quardando o tempo atual para comparação futura.
 
-    JMP DRAW_BALL                   ;Voltando para o ciclo que plota a bolinha
+;=================Movimento das Raquetes =================
+
+; Controle das raquetes
+    mov ah, 01h
+    int 16h  
+    jnz verificar_teclas
+	JMP main_loop  
+
+verificar_teclas:
+	IN AL, 60h
+    
+	CMP AL, 11h   ; Tecla 'W'
+	JNE verificar_s
+	JMP mover_raquete_esquerda_cima
+
+	verificar_s:
+	CMP AL, 1Fh   ; Tecla 'S'
+	JNE verificar_cima
+	JMP mover_raquete_esquerda_baixo
+
+	verificar_cima:
+	CMP AL, 48h   ; Seta para cima
+	JNE verificar_baixo
+	JMP mover_raquete_direita_cima
+
+	verificar_baixo:
+	CMP AL, 50h   ; Seta para baixo
+	JNE verificacao_feita
+	JMP mover_raquete_direita_baixo
+
+	verificacao_feita:
+	JMP main_loop  ; Voltando para o ciclo principal
+
+%define PASSO_RAQUETE 1  ; Define a velocidade da raquete
+
+mover_raquete_esquerda_cima:
+
+    MOV CX,[raqueteSpeed]
+    loop_SobeRaquete_Esq:
+	; Apaga a trilha anterior (linha preta na direção oposta)
+    mov byte [cor], preto  
+    mov ax, [raquete_esquerda]
+    push ax
+    mov ax, [raquete_esquerda+2]
+    push ax
+    mov ax, [raquete_esquerda]
+    add ax, 20  
+    push ax
+    mov ax, [raquete_esquerda+2]
+    push ax
+    call line
+    
+    ; Move a raquete
+    add word [raquete_esquerda+2], 84
+    
+    ; Desenha a nova posição
+    mov byte [cor], magenta
+    mov ax, [raquete_esquerda]
+    push ax
+    mov ax, [raquete_esquerda+2]
+    push ax
+    mov ax, [raquete_esquerda]
+    add ax, 20 
+    push ax
+    mov ax, [raquete_esquerda+2]
+    push ax
+    call line
+    sub word [raquete_esquerda+2], 83
+    LOOP loop_SobeRaquete_Esq
+
+	JMP main_loop
+
+mover_raquete_esquerda_baixo:
+	
+    MOV CX,[raqueteSpeed]
+    loop_DesceRaquete_Esq:
+
+	sub word [raquete_esquerda+2], PASSO_RAQUETE
+    
+    mov byte [cor], magenta
+    mov ax, [raquete_esquerda]
+    push ax
+    mov ax, [raquete_esquerda+2]
+    push ax
+    mov ax, [raquete_esquerda]
+    add ax, 20  
+    push ax
+    mov ax, [raquete_esquerda+2]
+    push ax
+    call line
+
+    add word [raquete_esquerda+2], 84
+
+    mov byte [cor], preto  
+    mov ax, [raquete_esquerda]
+    push ax
+    mov ax, [raquete_esquerda+2]
+    push ax
+    mov ax, [raquete_esquerda]
+    add ax, 20  
+    push ax
+    mov ax, [raquete_esquerda+2]
+    push ax
+    call line
+    sub word [raquete_esquerda+2], 84
+    LOOP loop_DesceRaquete_Esq
+
+	JMP main_loop
+
+mover_raquete_direita_cima:
+    MOV CX,[raqueteSpeed]
+    loop_SobeRaquete:
+
+    ; Apaga a trilha anterior (linha preta na direção oposta)
+    mov byte [cor], preto  
+    mov ax, [raquete_direita]               ;x1
+    push ax
+    mov ax, [raquete_direita+2]             ;y1
+    push ax
+    mov ax, [raquete_direita]               ;x2
+    add ax, 20  
+    push ax
+    mov ax, [raquete_direita+2]             ;y2
+    push ax
+    call line
+    
+    ; Move a raquete
+    add word [raquete_direita+2], 84
+    
+    ; Desenha a nova posição
+    mov byte [cor], azul
+    mov ax, [raquete_direita]
+    push ax
+    mov ax, [raquete_direita+2]
+    push ax
+    mov ax, [raquete_direita]
+    add ax, 20 
+    push ax
+    mov ax, [raquete_direita+2]
+    push ax
+    call line
+    sub word [raquete_direita+2], 83
+    
+    LOOP loop_SobeRaquete
+
+
+	JMP main_loop
+
+mover_raquete_direita_baixo:
+	MOV CX,[raqueteSpeed]
+    loop_DesceRaquete_Dir:
+    
+    sub word [raquete_direita+2], PASSO_RAQUETE
+    
+    mov byte [cor], azul
+    mov ax, [raquete_direita]
+    push ax
+    mov ax, [raquete_direita+2]
+    push ax
+    mov ax, [raquete_direita]
+    add ax, 20  
+    push ax
+    mov ax, [raquete_direita+2]
+    push ax
+    call line
+
+    add word [raquete_direita+2], 84
+
+    mov byte [cor], preto  
+    mov ax, [raquete_direita]
+    push ax
+    mov ax, [raquete_direita+2]
+    push ax
+    mov ax, [raquete_direita]
+    add ax, 20  
+    push ax
+    mov ax, [raquete_direita+2]
+    push ax
+    call line
+    sub word [raquete_direita+2], 84
+    LOOP loop_DesceRaquete_Dir
+
+	JMP main_loop
 
 
 	MOV    	AH,08h
@@ -855,14 +987,156 @@ segment code
 	INT     21h
 
 
+; -------------------------------------------------------------------
+; Exibir Menu com opções destacadas
+exibir_menu:
+        MOV     byte [selecao], 0  ; Opção inicial
+        CALL    imprimir_titulo
+        CALL    desenhar_opcoes
+        RET
+
+; -------------------------------------------------------------------
+; Rotina para capturar entrada do teclado e navegar no menu
+selecionar_opcao:
+    MOV     AH, 00h   ; Capturar tecla pressionada
+    INT     16h
+    
+    CMP     AL, 13    ; Enter
+    JE      confirmar_escolha
+    
+    CMP     AH, 48h   ; Seta para cima
+    JE      mover_cima
+    
+    CMP     AH, 50h   ; Seta para baixo
+    JE      mover_baixo
+    
+    JMP     selecionar_opcao  ; Continua capturando entrada
+
+mover_cima:
+    CMP     byte [selecao], 0
+    JE      selecionar_opcao  ; Já no topo, ignora
+    DEC     byte [selecao]    ; Move seleção para cima
+    CALL    desenhar_opcoes
+    JMP     selecionar_opcao
+
+mover_baixo:
+    CMP     byte [selecao], 2
+    JE      selecionar_opcao  ; Já na última opção, ignora
+    INC     byte [selecao]    ; Move seleção para baixo
+    CALL    desenhar_opcoes
+    JMP     selecionar_opcao
+
+confirmar_escolha:
+    ; Dependendo da opção selecionada, chamar rotina específica
+    CMP     byte [selecao], 0
+    JE      modo_facil
+    CMP     byte [selecao], 1
+    JE      modo_medio
+    CMP     byte [selecao], 2
+    JE      modo_dificil
+
+modo_facil:
+    ; Implementar lógica do modo fácil
+    MOV word [ballSpeed_X],3
+    MOV word [ballSpeed_Y],3
+    RET
+modo_medio:
+    ; Implementar lógica do modo médio
+    MOV word [ballSpeed_X],9
+    MOV word [ballSpeed_Y],9
+    RET
+modo_dificil:
+    ; Implementar lógica do modo difícil
+    MOV word [ballSpeed_X],15
+    MOV word [ballSpeed_Y],15
+    RET
+
+; -------------------------------------------------------------------
+; Desenhar opções do menu com destaque
+
+desenhar_opcoes:
+    MOV     CX, 9
+    MOV     BX, 0
+    MOV     DH, 8
+    MOV     DL, 30
+    MOV     byte [cor], branco_intenso
+    
+    CMP     byte [selecao], 0
+    JNE     normal1
+    MOV     byte [cor], verde  ; Destacar opção selecionada
+normal1:
+    CALL    imprimir_facil
+    
+    MOV     CX, 9
+    MOV     BX, 0
+    MOV     DH, 10
+    MOV     DL, 30
+    MOV     byte [cor], branco_intenso
+    
+    CMP     byte [selecao], 1
+    JNE     normal2
+    MOV     byte [cor], verde
+normal2:
+    CALL    imprimir_medio
+    
+    MOV     CX, 11
+    MOV     BX, 0
+    MOV     DH, 12
+    MOV     DL, 30
+    MOV     byte [cor], branco_intenso
+    
+    CMP     byte [selecao], 2
+    JNE     normal3
+    MOV     byte [cor], verde
+normal3:
+    CALL    imprimir_dificil
+    RET
+
+imprimir_titulo:
+    MOV     CX, 9
+    MOV     BX, 0
+    MOV     DH, 6
+    MOV     DL, 30
+    MOV     byte [cor], amarelo
+    MOV     SI, titulo
+    CALL    imprimir_texto
+    RET
+
+imprimir_facil:
+    MOV     SI, facil
+    CALL    imprimir_texto
+    RET
+
+imprimir_medio:
+    MOV     SI, medio
+    CALL    imprimir_texto
+    RET
+
+imprimir_dificil:
+    MOV     SI, dificil
+    CALL    imprimir_texto
+    RET
+
+imprimir_texto:
+    CALL    cursor
+    MOV     AL, [BX + SI]
+    CALL    caracter
+    INC     BX
+    INC     DL
+    LOOP    imprimir_texto
+    RET
+
+; -------------------------------------------------------------------
 	
 ;*******************************************************************
 
 segment data
 
+
 bola dw 320, 240, 25
 
-raquete_esquerda dw 31,282,51,198
+raquete_esquerda dw 31,198,51,282
+raquete_direita dw 588,198,608,282  ; Raquete direita centralizada
 
 raquete_direita_x1 dw 588
 raquete_direita_y1 dw 282
@@ -920,8 +1194,8 @@ mens    	    db  	'Funcao Grafica SE_I $'
 BALL_X          dw      40
 BALL_Y          dw      40
 TIME_AUX        dw      0
-ballSpeed_X     dw      10
-ballSpeed_Y     DW      10
+ballSpeed_X     dw      5
+ballSpeed_Y     DW      5
 ballCompDirecao DW      10
 ballCompDirecaoNeg  DW  10
 ball_x_old      dw      360 
@@ -929,6 +1203,7 @@ ball_Y_old      dw      240
 ball_direction_X    DW     1
 ball_direction_Y    DW     1
 ball_Radius         DW      15
+
 raqueteEsq_x1 dw 31
 raqueteEsq_y1 dw 197
 raqueteEsq_x2 dw 51
@@ -941,7 +1216,7 @@ raqueteDir_y2 dw 197
 
 raqueteEsq_y_old    dw  197
 raqueteDir_y_old    dw  197
-raqueteSpeed        dw  25
+raqueteSpeed        dw  10
 
 blocosAtivosDir     dw  1, 1, 1, 1, 1
 blocosAtivosEsq     dw  1, 1, 1, 1, 1
@@ -958,8 +1233,15 @@ blocoAtivoEsq_3     dw  1
 blocoAtivoEsq_4     dw  1
 blocoAtivoEsq_5     dw  1
 
-BlocosCoordenadas_X    dw  0,96,97,192,193,288,289,384,385,480  ;Y bloco 1(y1,y2), Y bloco 2(y1,y2), Y bloco 3(y1,y2), Y bloco 4(y1,y2), Y bloco 5(y1,y2) 
-BlocosCoordenadas_Y    dw  1,20,618,638                         ;X da Dir (x1,x2), X da Esq(x1,x2)
+selecao db 0
+titulo db 'PING-PONG SE_I $'
+facil db '1 - Facil SE_I $'
+medio db '2 - Medio SE_I $'
+dificil db '3 - Dificil SE_I $'
+
+BlocosCoordenadas_X    dw  6,90,102,186,198,282,294,378,390,474  ;Y bloco 1(y1,y2), Y bloco 2(y1,y2), Y bloco 3(y1,y2), Y bloco 4(y1,y2), Y bloco 5(y1,y2) 
+BlocosCoordenadas_Y    dw  1,21,618,638                         ;X da Dir (x1,x2), X da Esq(x1,x2)
+
 
 ;*************************************************************************
 segment stack stack
